@@ -49,5 +49,6 @@ po/*~
 rsconnect/
 
 # additional files
-mjmstable.Rproj
+MJMSTable.Rproj
 testing.R
+.Rbuildignore
