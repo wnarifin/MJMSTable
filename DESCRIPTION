@@ -1,0 +1,36 @@
+Package: MJMSTable
+Type: Package
+Title: Produce MJMS Statistical Tables using R
+Version: 0.1.0
+Authors@R: c(
+    person(given = "Ainin Sofiya",
+           family = "Shamsudin",
+           role = "aut",
+           email = "aininsofiya828@gmail.com"),
+    person(given = "Wan Nor",
+           family = "Arifin",
+           role = c("aut", "cre", "cph"),
+           email = "wnarifin@gmail.com",
+           comment = c(ORCID = "0000-0001-7786-4251"))
+    )
+Description: R package for generating publication-ready tables according to 
+    The Malaysian Journal of Medical Sciences (MJMS, <http://www.mjms.usm.my/index.html>) 
+    statistical requirements <http://www.mjms.usm.my/MJMS23052016/01MJMS23052016_ED.pdf>.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    broom,
+    broom.helpers,
+    dplyr,
+    ggplot2,
+    gt,
+    gtsummary,
+    parameters,
+    pROC,
+    rlang,
+    tibble,
+    tidyr
+Depends: 
+    R (>= 3.5)
+RoxygenNote: 7.3.3
