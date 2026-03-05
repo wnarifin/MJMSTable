@@ -3,7 +3,7 @@ Type: Package
 Title: Produce MJMS Statistical Tables using R
 Version: 0.1.0
 Authors@R: c(
-    person(given = "Ainin Sofiya",
+    person(given = "Ainin Sofiya Mastura",
            family = "Shamsudin",
            role = "aut",
            email = "aininsofiya828@gmail.com"),

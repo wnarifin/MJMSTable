@@ -51,4 +51,3 @@ rsconnect/
 # additional files
 MJMSTable.Rproj
 testing.R
-.Rbuildignore
