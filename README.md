@@ -26,14 +26,14 @@ install.packages("remotes")
 Install `MJMSTable` from GitHub:
 
 ```r
-devtools::install_github("wnarifin/MJMSTable")
+devtools::install_github("wnarifin/MJMSTable", build_vignettes = TRUE)
 
 ```
 
 or
 
 ```r
-remotes::install_github("wnarifin/MJMSTable")
+remotes::install_github("wnarifin/MJMSTable", build_vignettes = TRUE)
 ```
 
 ### Loading the Package
@@ -45,5 +45,8 @@ library(MJMSTable)
 
 # View the package index and help pages
 ?MJMSTable
+
+# Open the package vignette / tutorial
+vignette("MJMSTable")
 
 ```
