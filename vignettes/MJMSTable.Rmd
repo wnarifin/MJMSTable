@@ -41,8 +41,9 @@ descriptive_tbl(
   data = mjms_data,
   group_var = "Treatment_Group",
   included_var = c("Age", "BMI", "Sex", "Smoker"),
+  non_normal_vars = c("Age"),
   table_caption = "Baseline Patient Characteristics",
-  abbreviation = "BMI = Body Mass Index"
+  abbreviation = "BMI = Body Mass Index, SBP = Systolic Blood Pressure"
 )
 
 ```

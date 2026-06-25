@@ -4,68 +4,119 @@
 #'
 #' @description A descriptive table describing demographic or simple variable
 #' @param data Data frame
-#' @param group_var Grouping variable
+#' @param group_var Grouping variable (optional)
 #' @param included_var Variable to be included from the data frame
 #' @param continuous_vars Variables to be presented as continuous (mean and SD)
+#' @param non_normal_vars Variables to be presented as continuous but reported as median and IQR
 #' @param table_caption Caption for the table in string
 #' @param abbreviation Full name of abbreviated variables
 #' @return A descriptive table
-#' @importFrom rlang .data
+#' @importFrom rlang .data .env
 #' @examples
 #' descriptive_tbl(
 #'   data = mjms_data,
 #'   group_var = "Treatment_Group",
 #'   included_var = c("Age", "BMI", "Sex", "Smoker"),
+#'   non_normal_vars = c("Age"),
 #'   table_caption = "Baseline Patient Characteristics",
 #'   abbreviation = "BMI = Body Mass Index, SBP = Systolic Blood Pressure"
 #' )
 #' @export
-descriptive_tbl <- function(data, group_var, included_var, continuous_vars = NULL,
+descriptive_tbl <- function(data, group_var = NULL, included_var, continuous_vars = NULL,
+                            non_normal_vars = NULL,
                             table_caption = "Patient Demographics",
                             abbreviation = NULL){
 
-  if (!group_var %in% names(data)) {
+  if (!is.null(group_var) && !group_var %in% names(data)) {
     stop("The grouping variable was not found in the dataset.", call. = FALSE)
   }
 
   gtsummary::with_gtsummary_theme(
     gtsummary::theme_gtsummary_journal("jama"),
     {
-      type_list <- list(gtsummary::all_continuous() ~ "continuous")
-      if (!is.null(continuous_vars)) {
-        type_list <- c(type_list, list(dplyr::all_of(continuous_vars) ~ "continuous"))
+
+      # 1. Base lists: all_continuous() MUST come first
+      stat_list <- list(
+        gtsummary::all_continuous() ~ "{mean} ({sd})",
+        gtsummary::all_categorical() ~ "{n} ({p})"
+      )
+
+      digits_list <- list(
+        gtsummary::all_continuous() ~ c(1, 1),
+        gtsummary::all_categorical() ~ c(0, 1)
+      )
+
+      # 2. Append non-normal overrides so they evaluate LAST and override all_continuous
+      if (!is.null(non_normal_vars)) {
+        stat_list <- c(
+          stat_list,
+          list(dplyr::all_of(non_normal_vars) ~ "{median} ({IQR})")
+        )
+        # Note: {median} and {IQR} are two numbers, so the base c(1,1) from
+        # all_continuous() works perfectly and does not need to be overridden.
+      }
+
+      # 3. Define the columns to select
+      cols_to_select <- included_var
+      if (!is.null(group_var)) {
+        cols_to_select <- c(group_var, cols_to_select)
       }
 
       tbl_desc <- data |>
-        dplyr::select(dplyr::all_of(c(group_var, included_var)))|>
+        dplyr::select(dplyr::all_of(cols_to_select))|>
         gtsummary::tbl_summary(
-          by = dplyr::all_of(group_var),
-          type = type_list,
-          statistic = list(
-            gtsummary::all_continuous() ~ "{mean} ({sd})",
-            gtsummary::all_categorical() ~ "{n} ({p})"
-          ),
-          digits = list(
-            gtsummary::all_continuous() ~ c(1,1),
-            gtsummary::all_categorical() ~ c(0,1)
-          )
-        )|>
-        gtsummary::add_overall(last = TRUE)|>
-        gtsummary::modify_header(
-          label = "**Variables**",
-          stat_0 = "**Total**\n_n_ (%)",
-          stat_1 = "**{level}** \n(\n_n_ = {n})",
-          stat_2 = "**{level}** \n(\n_n_ = {n})"
-        )|>
-        gtsummary::modify_caption(paste0(" **Table :** ", table_caption, "(_n_ = {N})"))
+          by = if (!is.null(group_var)) dplyr::all_of(group_var) else NULL,
+          missing_text = "Missing",
+          statistic = stat_list,
+          digits = digits_list
+        )
 
+      # 4. Conditionally add overall and format headers
+      if (!is.null(group_var)) {
+        tbl_desc <- tbl_desc |>
+          gtsummary::add_overall(last = TRUE) |>
+          gtsummary::modify_header(
+            label = "**Variables**",
+            stat_0 = "**Total**\n_n_ (%)",
+            gtsummary::all_stat_cols(stat_0 = FALSE) ~ "**{level}** \n(\n_n_ = {n})"
+          )
+      } else {
+        tbl_desc <- tbl_desc |>
+          gtsummary::modify_header(
+            label = "**Variables**",
+            stat_0 = "**Total**\n_n_ (%)"
+          )
+      }
+
+      # 5. Process caption and clear old footnotes
       final_desc <- tbl_desc |>
-        gtsummary::remove_footnote_header() |>
-        gtsummary::modify_footnote_body(
-          footnote = "Mean (SD)",
-          columns = "label",
-          rows = .data$var_type == "continuous" & .data$row_type == "label"
-        )|>
+        gtsummary::modify_caption(paste0(" **Table :** ", table_caption, " (_n_ = {N})")) |>
+        gtsummary::remove_footnote_header()
+
+      # 6. Apply Footnotes
+      if (is.null(non_normal_vars)) {
+        final_desc <- final_desc |>
+          gtsummary::modify_footnote_body(
+            footnote = "Mean (SD)",
+            columns = "label",
+            rows = .data$var_type == "continuous" & .data$row_type == "label"
+          )
+      } else {
+        final_desc <- final_desc |>
+          gtsummary::modify_footnote_body(
+            footnote = "Mean (SD)",
+            columns = "label",
+            rows = .data$var_type == "continuous" & !(.data$variable %in% .env$non_normal_vars) & .data$row_type == "label"
+          ) |>
+          gtsummary::modify_footnote_body(
+            footnote = "Median (IQR)",
+            columns = "label",
+            rows = .data$var_type == "continuous" & (.data$variable %in% .env$non_normal_vars) & .data$row_type == "label"
+          )
+      }
+
+      # 7. GT conversions and source notes
+      final_desc <- final_desc |>
         gtsummary::as_gt() |>
         gt::opt_footnote_marks(marks = "letters")
 
@@ -73,10 +124,12 @@ descriptive_tbl <- function(data, group_var, included_var, continuous_vars = NUL
         final_desc <- final_desc |>
           gt::tab_source_note(source_note = paste0("Abbreviation: ", abbreviation))
       }
+
       return(final_desc)
     }
   )
 }
+
 
 # independent t-test ----
 
