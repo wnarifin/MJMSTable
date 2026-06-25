@@ -1,12 +1,5 @@
-#' @import dplyr
-#' @import ggplot2
-#' @import gtsummary
-#' @import gt
-#' @import broom
-#' @import pROC
-#' @import tidyr
-#' @import rlang
-#' @import tibble
-# @import parameters
-#' @importFrom rlang .data
+#' @importFrom rlang .data :=
+#' @importFrom broom tidy
+#' @importFrom broom.helpers tidy_parameters
+#' @importFrom pROC roc coords ci.auc ci.coords
 NULL

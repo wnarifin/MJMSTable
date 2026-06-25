@@ -1,0 +1,231 @@
+---
+title: "MJMSTable"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MJMSTable}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+The `MJMSTable` package is designed to streamline the process of creating publication-ready statistical tables that adhere to the formatting requirements of the *Malaysian Journal of Medical Sciences* (MJMS). Built on top of `gtsummary` and `gt`, this package provides wrapper functions for common statistical tests, automatically applying the correct themes, layouts, and footnotes.
+
+### Setup
+
+First, load the package. For this vignette, we will use a hypothetical dataset called `mjms_data` that comes with the package.
+
+```{r setup, eval=TRUE}
+library(MJMSTable)
+
+# View the structure of the dataset
+head(mjms_data)
+
+```
+
+---
+
+## 1. Descriptive Statistics
+
+The `descriptive_tbl()` function provides a clean summary of demographic or baseline characteristics, grouped by a specific variable.
+
+```{r descriptive, eval=TRUE}
+descriptive_tbl(
+  data = mjms_data,
+  group_var = "Treatment_Group",
+  included_var = c("Age", "BMI", "Sex", "Smoker"),
+  table_caption = "Baseline Patient Characteristics",
+  abbreviation = "BMI = Body Mass Index"
+)
+
+```
+
+---
+
+## 2. Comparing Means
+
+### Independent t-test
+
+Compare continuous variables between two independent groups using `ttest_tbl()`. You can toggle between standard and Welch's t-test using the `equal_var` argument.
+
+```{r indep_ttest, eval=TRUE}
+ttest_tbl(
+  data = mjms_data,
+  outcome_var = "BMI",
+  group_var = "Sex",
+  equal_var = TRUE,
+  table_caption = "Comparison of BMI by Biological Sex",
+  abbreviation = "BMI = body mass index"
+)
+
+```
+
+### Paired t-test
+
+For paired continuous data (e.g., pre- and post-measurements or paired body parts), use `paired_ttest_tbl()`.
+
+```{r paired_ttest, eval=TRUE}
+paired_ttest_tbl(
+  data = mjms_data,
+  id_var = "PatientID",
+  pre_var = "SBP_Left_Arm",
+  post_var = "SBP_Right_Arm",
+  outcome_var = "SBP_Right_Arm",
+  variable_label = "Systolic Blood Pressure (mmHg)",
+  table_caption = "Comparison of SBP between Left and Right Arms"
+)
+
+```
+
+### One-Way ANOVA
+
+When comparing means across more than two groups, `anova_tbl()` provides the F-statistic, degrees of freedom, and post-hoc adjustment results. It can also generate an accompanying mean plot.
+
+```{r anova, eval=TRUE}
+# Returns a list containing both the table and a ggplot object
+anova_results <- anova_tbl(
+  data = mjms_data,
+  outcome_var = "Cholesterol",
+  group_var = "Treatment_Group",
+  outcome_label = "Serum Cholesterol",
+  show_plot = TRUE
+)
+
+# View the table
+anova_results$table
+
+# View the plot
+anova_results$plot
+
+```
+
+---
+
+## 3. Categorical Associations
+
+### Chi-square Test
+
+Evaluate the association between two categorical variables with `chisq_tbl()`.
+
+```{r chisq, eval=TRUE}
+chisq_tbl(
+  data = mjms_data,
+  exposure_var = "Sex",
+  outcome_var = "Smoker",
+  table_caption = "Association of Gender vs. Smoking Status"
+)
+
+```
+
+### McNemar Test
+
+For paired categorical data, `mcnemar_tbl()` computes McNemar's Chi-squared test with continuity correction.
+
+```{r mcnemar, eval=TRUE}
+mcnemar_tbl(
+  data = mjms_data,
+  pre_var = "Symptom_Pre",
+  post_var = "Symptom_Post",
+  table_caption = "Symptom status pre- and post-treatment",
+  header_pre = "Pre Symptom",
+  header_post = "Post Symptom"
+)
+
+```
+
+---
+
+## 4. Regression Analyses
+
+### Linear Regression
+
+Summarize Simple or Multiple Linear Regression models using `lm_tbl()`.
+
+```{r lm, eval=TRUE}
+lm_tbl(
+  data = mjms_data,
+  outcome_var = "Cholesterol",
+  predictor_vars = c("Age", "BMI", "Smoker"),
+  var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
+  table_caption = "Multiple Linear Regression for Cholesterol"
+)
+
+```
+
+### Logistic Regression
+
+For binary outcomes, `logistic_tbl()` outputs Adjusted Odds Ratios, 95% CIs, and Wald statistics. You can also explicitly define reference levels.
+
+```{r logistic, eval=TRUE}
+logistic_tbl(
+  data = mjms_data,
+  outcome_var = "Heart_Disease",
+  predictors = c("Age", "Sex", "Smoker"),
+  ref_levels = list(Smoker = "No", Sex = "Female"),
+  cat_vars = c("Sex", "Smoker"),
+  table_caption = "Risk Factors for Heart Disease"
+)
+
+```
+
+---
+
+## 5. Advanced Analyses
+
+### Diagnostic Test (Sensitivity, Specificity, AUC)
+
+Analyze the performance of medical markers against a gold standard using `diagnostic_tbl()`. It handles multiple markers at once and optionally generates an ROC plot.
+
+```{r diagnostic, eval=TRUE}
+# Define index markers and their cutoffs
+med_marker <- list(
+  Cholesterol  = list(label = "Serum Cholesterol (Cutoff: 200)", cutoff = 200),
+  BMI          = list(label = "Body Mass Index (Cutoff: 25)", cutoff = 25),
+  SBP_Left_Arm = list(label = "Systolic BP - Left (Cutoff: 140)", cutoff = 140)
+)
+
+diag_results <- diagnostic_tbl(
+  data = mjms_data,
+  status_var = "Gold_Standard",
+  marker_map = med_marker,
+  show_plot = TRUE,
+  plot_marker = "Cholesterol",
+  table_caption = "Diagnostic Accuracy of Cardiovascular Markers",
+  abbreviation = "AUC = Area Under Curve; SBP = Systolic Blood Pressure"
+)
+
+# View outputs
+diag_results$table
+diag_results$plot
+
+```
+
+### Pearson Correlation
+
+Generate a clean correlation matrix with embedded p-values and standard deviations using `pearson_tbl()`. A scatterplot with an LM trendline can be toggled on.
+
+```{r pearson, eval=TRUE}
+corr_results <- pearson_tbl(
+  data = mjms_data,
+  included_var = c("Age", "BMI", "SBP_Left_Arm", "SBP_Right_Arm"),
+  show_plot = TRUE,
+  plot_x = "SBP_Left_Arm",
+  plot_y = "SBP_Right_Arm",
+  abbreviation = "BMI = body mass index; SBP = systolic blood pressure",
+  table_caption = "Correlation between clinical variables"
+)
+
+# View outputs
+corr_results$table
+corr_results$plot
+
+```
+
+

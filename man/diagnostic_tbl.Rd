@@ -19,7 +19,7 @@ diagnostic_tbl(
 
 \item{status_var}{Target variable (Gold standard)}
 
-\item{marker_map}{Define index tests/markers, friendly labels and cutoff points for every markers. See example below for settings.}
+\item{marker_map}{Define index tests/markers, friendly labels and cutoff points}
 
 \item{show_plot}{TRUE(plot) FALSE(no plot)}
 

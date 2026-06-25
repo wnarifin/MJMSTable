@@ -35,8 +35,8 @@ An Independent t-test output table
 \examples{
 ttest_tbl(
   data = mjms_data,
-  outcome_var = BMI,
-  group_var = Sex,
+  outcome_var = "BMI",
+  group_var = "Sex",
   equal_var = TRUE,
   table_caption = "Comparison of BMI by Biological Sex",
   abbreviation = "BMI = body mass index"

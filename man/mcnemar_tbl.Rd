@@ -35,8 +35,8 @@ A MC Nemar output table
 \examples{
 mcnemar_tbl(
 data = mjms_data,
-pre_var = Symptom_Pre,
-post_var = Symptom_Post,
+pre_var = "Symptom_Pre",
+post_var = "Symptom_Post",
 table_caption = "Symptom status pre- and post-treatment.",
 header_pre = "Pre Symptom",
 header_post = "Post Symptom"

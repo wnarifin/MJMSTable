@@ -9,8 +9,8 @@ paired_ttest_tbl(
   id_var,
   pre_var,
   post_var,
-  outcome_var,
-  variable_label,
+  outcome_var = NULL,
+  variable_label = NULL,
   table_caption = "Comparison between paired group",
   abbreviation = NULL
 )
@@ -41,10 +41,10 @@ A Paired t-test output table
 \examples{
 paired_ttest_tbl(
   data = mjms_data,
-  id_var = PatientID,
-  pre_var = SBP_Left_Arm,
-  post_var = SBP_Right_Arm,
-  outcome_var = SBP_Right_Arm,
+  id_var = "PatientID",
+  pre_var = "SBP_Left_Arm",
+  post_var = "SBP_Right_Arm",
+  outcome_var = "SBP_Right_Arm",
   variable_label = "Systolic Blood Pressure (mmHg)",
   table_caption = "Comparison of SBP between Left and Right Arms"
 )

@@ -51,3 +51,4 @@ rsconnect/
 # additional files
 MJMSTable.Rproj
 testing.R
+inst/doc

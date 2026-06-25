@@ -1,7 +1,7 @@
 Package: MJMSTable
 Type: Package
 Title: Produce MJMS Statistical Tables using R
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person(given = "Ainin Sofiya Mastura",
            family = "Shamsudin",
@@ -26,11 +26,14 @@ Imports:
     ggplot2,
     gt,
     gtsummary,
-    parameters,
     pROC,
     rlang,
     tibble,
     tidyr
 Depends: 
-    R (>= 3.5)
-RoxygenNote: 7.3.3
+    R (>= 4.1.0)
+Config/roxygen2/version: 8.0.0
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

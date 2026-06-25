@@ -16,9 +16,9 @@ lm_tbl(
 \arguments{
 \item{data}{Data frame}
 
-\item{outcome_var}{Outcome variable}
+\item{outcome_var}{Outcome variable as a string}
 
-\item{predictor_vars}{Predictor variables}
+\item{predictor_vars}{Predictor variables as a character vector}
 
 \item{var_labels}{New labels for variables in string}
 
@@ -35,8 +35,8 @@ A Linear regression output table for SLR or MLR
 \examples{
 lm_tbl(
   data = mjms_data,
-  outcome_var = Cholesterol,
-  predictor_vars = c(Age, BMI, Smoker),
+  outcome_var = "Cholesterol",
+  predictor_vars = c("Age", "BMI", "Smoker"),
   var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
   table_caption = "Multiple Linear Regression for Cholesterol"
 )

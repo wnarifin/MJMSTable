@@ -8,6 +8,7 @@ descriptive_tbl(
   data,
   group_var,
   included_var,
+  continuous_vars = NULL,
   table_caption = "Patient Demographics",
   abbreviation = NULL
 )
@@ -18,6 +19,8 @@ descriptive_tbl(
 \item{group_var}{Grouping variable}
 
 \item{included_var}{Variable to be included from the data frame}
+
+\item{continuous_vars}{Variables to be presented as continuous (mean and SD)}
 
 \item{table_caption}{Caption for the table in string}
 
@@ -32,8 +35,8 @@ A descriptive table describing demographic or simple variable
 \examples{
 descriptive_tbl(
   data = mjms_data,
-  group_var = Treatment_Group,
-  included_var = c(Age, BMI, Sex, Smoker),
+  group_var = "Treatment_Group",
+  included_var = c("Age", "BMI", "Sex", "Smoker"),
   table_caption = "Baseline Patient Characteristics",
   abbreviation = "BMI = Body Mass Index, SBP = Systolic Blood Pressure"
 )

@@ -44,8 +44,8 @@ A One-Way ANOVA output table with post-hoc adjustment
 \examples{
 anova_tbl(
   data = mjms_data,
-  outcome_var = Cholesterol,
-  group_var = Treatment_Group,
+  outcome_var = "Cholesterol",
+  group_var = "Treatment_Group",
   outcome_label = "Serum Cholesterol",
   show_plot = TRUE
 )

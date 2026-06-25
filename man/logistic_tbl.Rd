@@ -18,9 +18,9 @@ logistic_tbl(
 \arguments{
 \item{data}{Data frame}
 
-\item{outcome_var}{Binary output variable}
+\item{outcome_var}{Binary output variable as a string}
 
-\item{predictors}{Predictor variables}
+\item{predictors}{Predictor variables as a character vector}
 
 \item{ref_levels}{List name of reference levels (optional)}
 
@@ -41,10 +41,11 @@ A logistic regression output table
 \examples{
 logistic_tbl(
 data = mjms_data,
-outcome_var = Heart_Disease,
-predictors = c(Age, Sex, Smoker),
+outcome_var = "Heart_Disease",
+predictors = c("Age", "Sex", "Smoker"),
 ref_levels = list(Smoker = "No", Sex = "Female"),
 cat_vars = c("Sex", "Smoker"),
-table_caption = "Risk Factors for Heart Disease")
+table_caption = "Risk Factors for Heart Disease"
+)
 
 }

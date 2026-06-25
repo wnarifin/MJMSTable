@@ -7,7 +7,7 @@
 pearson_tbl(
   data,
   included_var = NULL,
-  show_plot = F,
+  show_plot = FALSE,
   plot_x = NULL,
   plot_y = NULL,
   abbreviation = NULL,
@@ -38,7 +38,7 @@ A Pearson's correlation output table with/without a correlation plot
 \examples{
 pearson_tbl(
   data = mjms_data,
-  included_var = c(Age, BMI, SBP_Left_Arm, SBP_Right_Arm),
+  included_var = c("Age", "BMI", "SBP_Left_Arm", "SBP_Right_Arm"),
   show_plot = TRUE,
   plot_x = "SBP_Left_Arm",
   plot_y = "SBP_Right_Arm",

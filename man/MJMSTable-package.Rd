@@ -13,6 +13,7 @@ R package for generating publication-ready tables according to The Malaysian Jou
 
 Authors:
 \itemize{
+  \item Wan Nor Arifin \email{wnarifin@gmail.com} (\href{https://orcid.org/0000-0001-7786-4251}{ORCID}) [copyright holder]
   \item Ainin Sofiya Mastura Shamsudin \email{aininsofiya828@gmail.com}
 }
 

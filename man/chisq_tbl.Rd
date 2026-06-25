@@ -29,8 +29,8 @@ A Chi-square output table
 \examples{
 chisq_tbl(
   data = mjms_data,
-  exposure_var = Sex,
-  outcome_var = Smoker,
+  exposure_var = "Sex",
+  outcome_var = "Smoker",
   table_caption = "Association of Gender vs. Smoking Status."
 )
 
