@@ -159,6 +159,17 @@ lm_tbl(
 
 ```
 
+It also supports interaction, which can be specified using "*" or ":" (similar to lm or glm formula):
+```{r lm_x, eval=TRUE}
+lm_tbl(
+  data = mjms_data,
+  outcome_var = "Cholesterol",
+  predictor_vars = c("Age", "BMI*Smoker"), # or predictor_vars = c("Age", "BMI", "Smoker", "BMI:Smoker"),
+  var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
+  table_caption = "Multiple Linear Regression for Cholesterol"
+)
+```
+
 ### Logistic Regression
 
 For binary outcomes, `logistic_tbl()` outputs Adjusted Odds Ratios, 95% CIs, and Wald statistics. You can also explicitly define reference levels.
@@ -167,12 +178,24 @@ For binary outcomes, `logistic_tbl()` outputs Adjusted Odds Ratios, 95% CIs, and
 logistic_tbl(
   data = mjms_data,
   outcome_var = "Heart_Disease",
-  predictors = c("Age", "Sex", "Smoker"),
+  predictor_vars = c("Age", "Sex", "Smoker"),
   ref_levels = list(Smoker = "No", Sex = "Female"),
   cat_vars = c("Sex", "Smoker"),
   table_caption = "Risk Factors for Heart Disease"
 )
 
+```
+
+It also supports interaction, which can be specified using "*" or ":" (similar to lm or glm formula):
+```{r logistic_x, eval=TRUE}
+logistic_tbl(
+  data = mjms_data,
+  outcome_var = "Heart_Disease",
+  predictor_vars = c("Age", "Sex", "Smoker", "Age:Smoker"), # or predictor_vars = c("Sex", "Age*Smoker"),
+  ref_levels = list(Smoker = "No", Sex = "Female"),
+  cat_vars = c("Sex", "Smoker"),
+  table_caption = "Risk Factors for Heart Disease"
+)
 ```
 
 ---

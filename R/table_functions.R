@@ -551,7 +551,7 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
 #' @description A logistic regression output table
 #' @param data Data frame
 #' @param outcome_var Binary output variable as a string
-#' @param predictors Predictor variables as a character vector
+#' @param predictor_vars Predictor variables as a character vector
 #' @param ref_levels List name of reference levels (optional)
 #' @param cat_vars Categorical variables that wish to see the reference variable
 #' @param var_labels List name of variable labels
@@ -564,19 +564,19 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
 #' logistic_tbl(
 #' data = mjms_data,
 #' outcome_var = "Heart_Disease",
-#' predictors = c("Age", "Sex", "Smoker"),
+#' predictor_vars = c("Age", "Sex", "Smoker"),
 #' ref_levels = list(Smoker = "No", Sex = "Female"),
 #' cat_vars = c("Sex", "Smoker"),
 #' table_caption = "Risk Factors for Heart Disease"
 #' )
 #'
 #' @export
-logistic_tbl <- function(data, outcome_var, predictors, ref_levels = NULL,
+logistic_tbl <- function(data, outcome_var, predictor_vars, ref_levels = NULL,
                          var_labels = NULL, cat_vars = NULL,
                          table_caption = "Associated factors", abbreviation = NULL){
 
   out_name <- outcome_var
-  pred_names <- predictors
+  pred_names <- predictor_vars
 
   if(!is.null(ref_levels)){
     for (v in names(ref_levels)) {
@@ -1029,7 +1029,7 @@ pearson_tbl <- function(
   sd_vals <- apply(corr_subset, 2, stats::sd, na.rm = TRUE)
   r_mat <- stats::cor(corr_subset, method = "pearson", use = "complete.obs")
   p_mat <- matrix(NA, n_var, n_var)
-  
+
   for (i in seq_len(n_var)) {
     for (j in seq_len(n_var)) {
       p_mat[i, j] <- stats::cor.test(corr_subset[[i]], corr_subset[[j]])$p.value
