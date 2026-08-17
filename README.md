@@ -1,7 +1,7 @@
 # MJMSTable
 R package for generating publication-ready tables according to 
-The Malaysian Journal of Medical Sciences (MJMS <http://www.mjms.usm.my/index.html>) 
-statistical requirements <http://www.mjms.usm.my/MJMS23052016/01MJMS23052016_ED.pdf>.
+The Malaysian Journal of Medical Sciences (MJMS, <https://ejournal.usm.my/mjms/>) 
+statistical requirements (Reporting Statistical Results in Medical Journals, <https://pmc.ncbi.nlm.nih.gov/articles/PMC5101968/>).
 
 ## Installation
 
