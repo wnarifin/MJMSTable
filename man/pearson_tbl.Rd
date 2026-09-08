@@ -4,26 +4,12 @@
 \alias{pearson_tbl}
 \title{Pearson's correlation}
 \usage{
-pearson_tbl(
-  data,
-  included_var = NULL,
-  show_plot = FALSE,
-  plot_x = NULL,
-  plot_y = NULL,
-  abbreviation = NULL,
-  table_caption = ""
-)
+pearson_tbl(data, included_var = NULL, abbreviation = NULL, table_caption = "")
 }
 \arguments{
 \item{data}{Data frame}
 
 \item{included_var}{Variable to be included from the data frame}
-
-\item{show_plot}{TRUE(plot) FALSE(no plot)}
-
-\item{plot_x}{Variable to be x-axis}
-
-\item{plot_y}{Variable to be y-axis}
 
 \item{abbreviation}{Full name of abbreviated variables}
 
@@ -33,15 +19,12 @@ pearson_tbl(
 A Pearson's Correlation output table
 }
 \description{
-A Pearson's correlation output table with/without a correlation plot
+A Pearson's correlation output table
 }
 \examples{
 pearson_tbl(
   data = mjms_data,
   included_var = c("Age", "BMI", "SBP_Left_Arm", "SBP_Right_Arm"),
-  show_plot = TRUE,
-  plot_x = "SBP_Left_Arm",
-  plot_y = "SBP_Right_Arm",
   abbreviation = "BMI = body mass index, SBP = systolic blood pressure",
   table_caption = "Correlation between variables."
 )

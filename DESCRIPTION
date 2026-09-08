@@ -1,7 +1,7 @@
 Package: MJMSTable
 Type: Package
 Title: Produce MJMS Statistical Tables using R
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(
     person(given = "Ainin Sofiya Mastura",
            family = "Shamsudin",

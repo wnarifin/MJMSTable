@@ -12,8 +12,7 @@ anova_tbl(
   outcome_label = NULL,
   table_caption = "Comparison of means between groups",
   posthoc_method = "bonferroni",
-  abbreviation = NULL,
-  show_plot = FALSE
+  abbreviation = NULL
 )
 }
 \arguments{
@@ -32,11 +31,9 @@ anova_tbl(
 \item{posthoc_method}{P-value adjustment for post-hoc test}
 
 \item{abbreviation}{Full name of abbreviated variables}
-
-\item{show_plot}{TRUE(plot) FALSE(no plot)}
 }
 \value{
-A One-Way ANOVA output table with/without plot graph
+A One-Way ANOVA output table
 }
 \description{
 A One-Way ANOVA output table with post-hoc adjustment
@@ -46,8 +43,7 @@ anova_tbl(
   data = mjms_data,
   outcome_var = "Cholesterol",
   group_var = "Treatment_Group",
-  outcome_label = "Serum Cholesterol",
-  show_plot = TRUE
+  outcome_label = "Serum Cholesterol"
 )
 
 }

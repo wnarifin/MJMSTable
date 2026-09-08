@@ -78,7 +78,6 @@ paired_ttest_tbl(
   id_var = "PatientID",
   pre_var = "SBP_Left_Arm",
   post_var = "SBP_Right_Arm",
-  outcome_var = "SBP_Right_Arm",
   variable_label = "Systolic Blood Pressure (mmHg)",
   table_caption = "Comparison of SBP between Left and Right Arms"
 )
@@ -87,23 +86,15 @@ paired_ttest_tbl(
 
 ### One-Way ANOVA
 
-When comparing means across more than two groups, `anova_tbl()` provides the F-statistic, degrees of freedom, and post-hoc adjustment results. It can also generate an accompanying mean plot.
+When comparing means across more than two groups, `anova_tbl()` provides the F-statistic, degrees of freedom, and post-hoc adjustment results.
 
 ```{r anova, eval=TRUE}
-# Returns a list containing both the table and a ggplot object
-anova_results <- anova_tbl(
+anova_tbl(
   data = mjms_data,
   outcome_var = "Cholesterol",
   group_var = "Treatment_Group",
-  outcome_label = "Serum Cholesterol",
-  show_plot = TRUE
+  outcome_label = "Serum Cholesterol"
 )
-
-# View the table
-anova_results$table
-
-# View the plot
-anova_results$plot
 
 ```
 
@@ -147,56 +138,33 @@ mcnemar_tbl(
 
 ### Linear Regression
 
-Summarize Simple or Multiple Linear Regression models using `lm_tbl()`.
+Summarize Simple or Multiple Linear Regression models using `lm_tbl()`. Interaction terms can be included using standard R formula syntax, "*" or ":".
 
 ```{r lm, eval=TRUE}
 lm_tbl(
   data = mjms_data,
   outcome_var = "Cholesterol",
-  predictor_vars = c("Age", "BMI", "Smoker"),
+  predictor_vars = c("Age * BMI", "Smoker"), # "Age * BMI" adds an interaction term
   var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
   table_caption = "Multiple Linear Regression for Cholesterol"
 )
 
-```
-
-It also supports interaction, which can be specified using "*" or ":" (similar to lm or glm formula):
-```{r lm_x, eval=TRUE}
-lm_tbl(
-  data = mjms_data,
-  outcome_var = "Cholesterol",
-  predictor_vars = c("Age", "BMI*Smoker"), # or predictor_vars = c("Age", "BMI", "Smoker", "BMI:Smoker"),
-  var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
-  table_caption = "Multiple Linear Regression for Cholesterol"
-)
 ```
 
 ### Logistic Regression
 
-For binary outcomes, `logistic_tbl()` outputs Adjusted Odds Ratios, 95% CIs, and Wald statistics. You can also explicitly define reference levels.
+For binary outcomes, `logistic_tbl()` outputs Adjusted Odds Ratios, 95% CIs, and Wald statistics. You can also explicitly define reference levels. Interaction terms can be included using standard R formula syntax, "*" or ":".
 
 ```{r logistic, eval=TRUE}
 logistic_tbl(
   data = mjms_data,
   outcome_var = "Heart_Disease",
-  predictor_vars = c("Age", "Sex", "Smoker"),
+  predictor_vars = c("Age * Sex", "Smoker"), # "Age * Sex" adds an interaction term
   ref_levels = list(Smoker = "No", Sex = "Female"),
   cat_vars = c("Sex", "Smoker"),
   table_caption = "Risk Factors for Heart Disease"
 )
 
-```
-
-It also supports interaction, which can be specified using "*" or ":" (similar to lm or glm formula):
-```{r logistic_x, eval=TRUE}
-logistic_tbl(
-  data = mjms_data,
-  outcome_var = "Heart_Disease",
-  predictor_vars = c("Age", "Sex", "Smoker", "Age:Smoker"), # or predictor_vars = c("Sex", "Age*Smoker"),
-  ref_levels = list(Smoker = "No", Sex = "Female"),
-  cat_vars = c("Sex", "Smoker"),
-  table_caption = "Risk Factors for Heart Disease"
-)
 ```
 
 ---
@@ -233,22 +201,15 @@ diag_results$plot
 
 ### Pearson Correlation
 
-Generate a clean correlation matrix with embedded p-values and standard deviations using `pearson_tbl()`. A scatterplot with an LM trendline can be toggled on.
+Generate a clean correlation matrix with embedded p-values and standard deviations using `pearson_tbl()`.
 
 ```{r pearson, eval=TRUE}
-corr_results <- pearson_tbl(
+pearson_tbl(
   data = mjms_data,
   included_var = c("Age", "BMI", "SBP_Left_Arm", "SBP_Right_Arm"),
-  show_plot = TRUE,
-  plot_x = "SBP_Left_Arm",
-  plot_y = "SBP_Right_Arm",
   abbreviation = "BMI = body mass index; SBP = systolic blood pressure",
   table_caption = "Correlation between clinical variables"
 )
-
-# View outputs
-corr_results$table
-corr_results$plot
 
 ```
 

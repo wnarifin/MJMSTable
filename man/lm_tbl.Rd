@@ -18,7 +18,9 @@ lm_tbl(
 
 \item{outcome_var}{Outcome variable as a string}
 
-\item{predictor_vars}{Predictor variables as a character vector}
+\item{predictor_vars}{Predictor variables as a character vector. Interaction
+terms can be included using standard R formula syntax, e.g. "Age * BMI"
+or "Age:BMI"}
 
 \item{var_labels}{New labels for variables in string}
 
@@ -36,7 +38,7 @@ A Linear regression output table for SLR or MLR
 lm_tbl(
   data = mjms_data,
   outcome_var = "Cholesterol",
-  predictor_vars = c("Age", "BMI", "Smoker"),
+  predictor_vars = c("Age * BMI", "Smoker"), # "Age * BMI" adds an interaction term
   var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
   table_caption = "Multiple Linear Regression for Cholesterol"
 )

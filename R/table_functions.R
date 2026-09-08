@@ -6,7 +6,6 @@
 #' @param data Data frame
 #' @param group_var Grouping variable (optional)
 #' @param included_var Variable to be included from the data frame
-#' @param continuous_vars Variables to be presented as continuous (mean and SD)
 #' @param non_normal_vars Variables to be presented as continuous but reported as median and IQR
 #' @param table_caption Caption for the table in string
 #' @param abbreviation Full name of abbreviated variables
@@ -22,8 +21,7 @@
 #'   abbreviation = "BMI = Body Mass Index, SBP = Systolic Blood Pressure"
 #' )
 #' @export
-descriptive_tbl <- function(data, group_var = NULL, included_var, continuous_vars = NULL,
-                            non_normal_vars = NULL,
+descriptive_tbl <- function(data, group_var = NULL, included_var, non_normal_vars = NULL,
                             table_caption = "Patient Demographics",
                             abbreviation = NULL){
 
@@ -115,7 +113,15 @@ descriptive_tbl <- function(data, group_var = NULL, included_var, continuous_var
           )
       }
 
-      # 7. GT conversions and source notes
+      # 7. Drop gtsummary's redundant "<label>, Mean (SD)" style suffix,
+      # since footnotes above already state the statistic shown.
+      final_desc <- final_desc |>
+        gtsummary::modify_post_fmt_fun(
+          fmt_fun = ~ strip_stat_suffix(.),
+          columns = "label"
+        )
+
+      # 8. GT conversions and source notes
       final_desc <- final_desc |>
         gtsummary::as_gt() |>
         gt::opt_footnote_marks(marks = "letters")
@@ -165,7 +171,7 @@ ttest_tbl <- function(data, outcome_var, group_var, equal_var = TRUE,
   }
 
   ttest_out <- stats::t.test(
-    stats::as.formula(paste(outcome_var, "~", group_var)),
+    stats::as.formula(paste(bt(outcome_var), "~", bt(group_var))),
     data = data,
     var.equal= equal_var
   )
@@ -193,7 +199,7 @@ ttest_tbl <- function(data, outcome_var, group_var, equal_var = TRUE,
         )|>
         gtsummary::modify_spanning_header(c("stat_1","stat_2") ~ "**Mean (SD)**") |>
         gtsummary::modify_post_fmt_fun(
-          fmt_fun = ~ gsub(",?\\s*Mean \\(SD\\)", "", .),
+          fmt_fun = ~ strip_stat_suffix(.),
           columns = "label"
         )|>
         gtsummary::modify_post_fmt_fun(
@@ -250,7 +256,6 @@ ttest_tbl <- function(data, outcome_var, group_var, equal_var = TRUE,
 #' @param id_var ID variable or unique identifier
 #' @param pre_var Pre variable continuous
 #' @param post_var Post variable continuous
-#' @param outcome_var Continuous outcome variable
 #' @param variable_label New label for outcome variable
 #' @param table_caption Caption for the table in string
 #' @param abbreviation Full name of abbreviated variables
@@ -263,13 +268,12 @@ ttest_tbl <- function(data, outcome_var, group_var, equal_var = TRUE,
 #'   id_var = "PatientID",
 #'   pre_var = "SBP_Left_Arm",
 #'   post_var = "SBP_Right_Arm",
-#'   outcome_var = "SBP_Right_Arm",
 #'   variable_label = "Systolic Blood Pressure (mmHg)",
 #'   table_caption = "Comparison of SBP between Left and Right Arms"
 #' )
 #'
 #' @export
-paired_ttest_tbl <- function(data, id_var, pre_var, post_var, outcome_var = NULL, variable_label = NULL,
+paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = NULL,
                              table_caption = "Comparison between paired group",
                              abbreviation = NULL) {
 
@@ -321,8 +325,12 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, outcome_var = NULL
           fmt_fun = ~ gsub(" to ", ", ", .),
           columns = "estimate"
         )|>
+        gtsummary::modify_post_fmt_fun(
+          fmt_fun = ~ strip_stat_suffix(.),
+          columns = "label"
+        )|>
         gtsummary::modify_spanning_header(
-          c("stat_1","stat_2") ~ "**Mean (SD)** \n_n_ = {n}"
+          c("stat_1","stat_2") ~ "**Mean (SD)**    \n_n_ = {n}"
         )|>
         gtsummary::modify_header(
           label = "**Variable**",
@@ -378,8 +386,7 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, outcome_var = NULL
 #' @param table_caption Caption for the table in string
 #' @param posthoc_method P-value adjustment for post-hoc test
 #' @param abbreviation Full name of abbreviated variables
-#' @param show_plot TRUE(plot) FALSE(no plot)
-#' @return A One-Way ANOVA output table with/without plot graph
+#' @return A One-Way ANOVA output table
 #' @importFrom stats aov as.formula pairwise.t.test sd
 #' @importFrom rlang := .data
 #' @examples
@@ -387,15 +394,14 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, outcome_var = NULL
 #'   data = mjms_data,
 #'   outcome_var = "Cholesterol",
 #'   group_var = "Treatment_Group",
-#'   outcome_label = "Serum Cholesterol",
-#'   show_plot = TRUE
+#'   outcome_label = "Serum Cholesterol"
 #' )
 #'
 #' @export
 anova_tbl <- function(
     data, outcome_var, group_var, var_equal = TRUE, outcome_label = NULL,
     table_caption = "Comparison of means between groups",
-    posthoc_method = "bonferroni", abbreviation = NULL, show_plot = FALSE){
+    posthoc_method = "bonferroni", abbreviation = NULL){
 
   out_name <- outcome_var
   grp_name <- group_var
@@ -423,7 +429,7 @@ anova_tbl <- function(
         gtsummary::tbl_summary(include = dplyr::all_of(grp_name), statistic = ~ "{n}")|>
         gtsummary::modify_header(stat_0 = "**_n_**",label = "")
 
-      aov_fit <- stats::aov(stats::as.formula(paste(out_name, "~", grp_name)), data = data)
+      aov_fit <- stats::aov(stats::as.formula(paste(bt(out_name), "~", bt(grp_name))), data = data)
       aov_tidy <- broom::tidy(aov_fit)
 
       ph_test <- stats::pairwise.t.test(data[[out_name]], data[[grp_name]],
@@ -452,13 +458,13 @@ anova_tbl <- function(
         )|>
         gtsummary::modify_header(
           label = "**Groups**",
-          stat_0_1 = paste0("**", outcome_label, "** \n**Mean (SD)**"),
+          stat_0_1 = paste0("**", outcome_label, "**    \n**Mean (SD)**"),
           Fstatistic = "_F_**-statistic** \n(df1,df2)",
           p.value_1 = "_P_**-value**"
         )|>
         gtsummary::remove_footnote_header()|>
         gtsummary::modify_post_fmt_fun(
-          fmt_fun = ~ gsub(",?\\s*n", "", .),
+          fmt_fun = ~ strip_stat_suffix(.),
           columns = "label"
         )|>
         gtsummary::modify_caption(paste0("**Table :** ", table_caption))|>
@@ -477,30 +483,6 @@ anova_tbl <- function(
         )|>
         gt::opt_footnote_marks(marks = "letters")
 
-      if(show_plot){
-        plot_data <- data |>
-          dplyr::group_by(.data[[grp_name]]) |>
-          dplyr::summarise(
-            n = dplyr::n(),
-            mean_val = mean(.data[[out_name]], na.rm = TRUE),
-            sd_val = stats::sd(.data[[out_name]], na.rm = TRUE),
-            error = 1.96 * (.data$sd_val / sqrt(.data$n)),
-            lower = .data$mean_val - .data$error,
-            upper = .data$mean_val + .data$error
-          )
-
-        final_plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = .data[[grp_name]], y = .data$mean_val)) +
-          ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$lower, ymax = .data$upper), width = 0.1,
-                        color = "blue", linewidth = 0.8) +
-          ggplot2::geom_point(shape = 21, size = 4, fill = "white", color =  "black") +
-          ggplot2::geom_text(ggplot2::aes(y = .data$lower - (0.05 * .data$mean_val), label = paste0("n = ", .data$n)),
-                    size = 3.5) +
-          ggplot2::labs(title = "Mean Plot with 95% CI", x = grp_name, y = out_name) +
-          ggplot2::theme_minimal()
-
-        return(list(table = final_merge, plot = final_plot))
-      }
-
       return(final_merge)
     }
   )
@@ -513,7 +495,9 @@ anova_tbl <- function(
 #' @description A Linear regression output table for SLR or MLR
 #' @param data Data frame
 #' @param outcome_var Outcome variable as a string
-#' @param predictor_vars Predictor variables as a character vector
+#' @param predictor_vars Predictor variables as a character vector. Interaction
+#' terms can be included using standard R formula syntax, e.g. "Age * BMI"
+#' or "Age:BMI"
 #' @param var_labels New labels for variables in string
 #' @param table_caption Caption for the table in string
 #' @param abbreviation Full name of abbreviated variables
@@ -524,7 +508,7 @@ anova_tbl <- function(
 #' lm_tbl(
 #'   data = mjms_data,
 #'   outcome_var = "Cholesterol",
-#'   predictor_vars = c("Age", "BMI", "Smoker"),
+#'   predictor_vars = c("Age * BMI", "Smoker"), # "Age * BMI" adds an interaction term
 #'   var_labels = list(Age ~ "Age (Years)", BMI ~ "Body Mass Index"),
 #'   table_caption = "Multiple Linear Regression for Cholesterol"
 #' )
@@ -537,7 +521,7 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
   out_name <- outcome_var
   pred_names <- predictor_vars
 
-  frmla <- stats::as.formula(paste(out_name, "~", paste(pred_names, collapse =  " + ")))
+  frmla <- stats::as.formula(paste(bt(out_name), "~", paste(bt(pred_names), collapse =  " + ")))
   model <- stats::lm(frmla, data = data)
 
   t_tbl <- broom::tidy(model) |>
@@ -604,7 +588,9 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
 #' @description A logistic regression output table
 #' @param data Data frame
 #' @param outcome_var Binary output variable as a string
-#' @param predictor_vars Predictor variables as a character vector
+#' @param predictor_vars Predictor variables as a character vector. Interaction
+#' terms can be included using standard R formula syntax, e.g. "Age * Sex"
+#' or "Age:Sex"
 #' @param ref_levels List name of reference levels (optional)
 #' @param cat_vars Categorical variables that wish to see the reference variable
 #' @param var_labels List name of variable labels
@@ -617,7 +603,7 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
 #' logistic_tbl(
 #' data = mjms_data,
 #' outcome_var = "Heart_Disease",
-#' predictor_vars = c("Age", "Sex", "Smoker"),
+#' predictor_vars = c("Age * Sex", "Smoker"), # "Age * Sex" adds an interaction term
 #' ref_levels = list(Smoker = "No", Sex = "Female"),
 #' cat_vars = c("Sex", "Smoker"),
 #' table_caption = "Risk Factors for Heart Disease"
@@ -640,7 +626,7 @@ logistic_tbl <- function(data, outcome_var, predictor_vars, ref_levels = NULL,
   }
 
   model_formula <- stats::as.formula(
-    paste(out_name, "~", paste(pred_names, collapse = " + "))
+    paste(bt(out_name), "~", paste(bt(pred_names), collapse = " + "))
   )
 
   model <- stats::glm(model_formula, data = data, family = stats::binomial(link = "logit"))
@@ -790,7 +776,7 @@ mcnemar_tbl <- function(
         )|>
         gtsummary::modify_column_unhide(columns = c("n_total", "chisq_stats", "p_final"))|>
         gtsummary::modify_header(
-          gtsummary::all_stat_cols() ~ "**{level}** \n_n_ (%)",
+          gtsummary::all_stat_cols() ~ "**{level}**    \n_n_ (%)",
           label = paste0("**", header_pre, "**"),
           n_total = "**_n_**",
           chisq_stats = "\u03c7\u00b2 **-statistic** \n(df)",
@@ -802,6 +788,10 @@ mcnemar_tbl <- function(
         gtsummary::modify_footnote_header(
           footnote = "McNemar's Chi-squared test with continuity correction.",
           columns = "p_final"
+        )|>
+        gtsummary::modify_post_fmt_fun(
+          fmt_fun = ~ strip_stat_suffix(.),
+          columns = "label"
         )|>
         gtsummary::as_gt()|>
         gt::opt_footnote_marks(marks = "letters")
@@ -884,6 +874,10 @@ chisq_tbl <- function(
         gtsummary::modify_footnote_header(
           footnote = "Chi-square test for independence.",
           columns = "p_val_custom"
+        )|>
+        gtsummary::modify_post_fmt_fun(
+          fmt_fun = ~ strip_stat_suffix(.),
+          columns = "label"
         )|>
         gtsummary::as_gt()|>
         gt::opt_footnote_marks(marks = "letters")
@@ -1010,6 +1004,10 @@ diagnostic_tbl <- function(
         gtsummary::remove_footnote_header()|>
         gtsummary::modify_footnote_header(footnote = "Null hypothesis: true area = 0.5.",
                                           columns = "p.value_4")|>
+        gtsummary::modify_post_fmt_fun(
+          fmt_fun = ~ strip_stat_suffix(.),
+          columns = "label"
+        )|>
         gtsummary::as_gt()|>
         gt::opt_footnote_marks(marks = "letters")|>
         gt::tab_caption(caption = paste0(table_caption, " (n = ", nrow(data), ")"))
@@ -1042,12 +1040,9 @@ diagnostic_tbl <- function(
 
 #' Pearson's correlation
 #'
-#' @description A Pearson's correlation output table with/without a correlation plot
+#' @description A Pearson's correlation output table
 #' @param data Data frame
 #' @param included_var Variable to be included from the data frame
-#' @param show_plot TRUE(plot) FALSE(no plot)
-#' @param plot_x Variable to be x-axis
-#' @param plot_y Variable to be y-axis
 #' @param abbreviation Full name of abbreviated variables
 #' @param table_caption Caption for the table in string
 #' @return A Pearson's Correlation output table
@@ -1057,17 +1052,13 @@ diagnostic_tbl <- function(
 #' pearson_tbl(
 #'   data = mjms_data,
 #'   included_var = c("Age", "BMI", "SBP_Left_Arm", "SBP_Right_Arm"),
-#'   show_plot = TRUE,
-#'   plot_x = "SBP_Left_Arm",
-#'   plot_y = "SBP_Right_Arm",
 #'   abbreviation = "BMI = body mass index, SBP = systolic blood pressure",
 #'   table_caption = "Correlation between variables."
 #' )
 #'
 #' @export
 pearson_tbl <- function(
-    data, included_var = NULL, show_plot = FALSE, plot_x = NULL, plot_y = NULL,
-    abbreviation = NULL, table_caption =""){
+    data, included_var = NULL, abbreviation = NULL, table_caption =""){
 
   if (is.null(included_var)){
     corr_subset <- data |> dplyr::select(dplyr::where(is.numeric))
@@ -1077,7 +1068,6 @@ pearson_tbl <- function(
 
   var_names <- colnames(corr_subset)
   n_var <- ncol(corr_subset)
-  results <- list()
 
   sd_vals <- apply(corr_subset, 2, stats::sd, na.rm = TRUE)
   r_mat <- stats::cor(corr_subset, method = "pearson", use = "complete.obs")
@@ -1091,13 +1081,7 @@ pearson_tbl <- function(
 
   tabs <- matrix("", ncol = n_var, nrow = n_var)
   colnames(tabs) <- var_names
-
-  display_names <- if(!is.null(abbreviation)){
-    sapply(var_names, function(x) if(x %in% names(abbreviation)) abbreviation[[x]] else x)
-  } else {
-    var_names
-  }
-  rownames(tabs) <- display_names
+  rownames(tabs) <- var_names
 
   for (i in seq_len(n_var)) {
     for (j in seq_len(n_var)) {
@@ -1139,15 +1123,11 @@ pearson_tbl <- function(
   }
 
   if (!is.null(abbreviation)){
-    if (!is.null(names(abbreviation)) && all(names(abbreviation) != "")){
-      abbr_text <- paste(names(abbreviation), abbreviation, sep = " = ", collapse = "; ")
-    } else {
-      abbr_text <- paste(abbreviation, collapse = "; ")
-    }
-    gt_table <- gt_table |> gt::tab_source_note(source_note = gt::md(abbr_text))
+    gt_table <- gt_table |>
+      gt::tab_source_note(source_note = gt::md(paste0("Abbreviation: ", abbreviation)))
   }
 
-  results$table <- gt_table |>
+  gt_table |>
     gt::opt_footnote_marks(marks = "letters")|>
     gt::tab_style(style = gt::cell_text(weight = "bold"), locations = gt::cells_stub())|>
     gt::tab_options(
@@ -1157,22 +1137,4 @@ pearson_tbl <- function(
       column_labels.border.bottom.color = "black", table.width = gt::pct(90)
     )|>
     gt::opt_row_striping()
-
-  if (show_plot && !is.null(plot_x) && !is.null(plot_y)){
-    ctest <- stats::cor.test(data[[plot_x]], data[[plot_y]])
-
-    results$plot <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[plot_x]], y = .data[[plot_y]])) +
-      ggplot2::geom_point(shape = 1) +
-      ggplot2::geom_smooth(method = "lm", se = FALSE) +
-      ggplot2::labs(
-        title = paste("Relationship between", plot_x, "and", plot_y),
-        caption = paste0("r = ", round(ctest$estimate, 2),
-                         " (P ", ifelse(ctest$p.value < 0.001, "< 0.001)",
-                                        paste0( "= ", round(ctest$p.value, 3), ")")))
-      ) +
-      ggplot2::theme_classic() +
-      ggplot2::theme(plot.caption = ggplot2::element_text(hjust = 0.5, face = "bold"))
-  }
-
-  return(if (show_plot) results else results$table)
 }

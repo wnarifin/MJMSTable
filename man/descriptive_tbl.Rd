@@ -6,9 +6,9 @@
 \usage{
 descriptive_tbl(
   data,
-  group_var,
+  group_var = NULL,
   included_var,
-  continuous_vars = NULL,
+  non_normal_vars = NULL,
   table_caption = "Patient Demographics",
   abbreviation = NULL
 )
@@ -16,11 +16,11 @@ descriptive_tbl(
 \arguments{
 \item{data}{Data frame}
 
-\item{group_var}{Grouping variable}
+\item{group_var}{Grouping variable (optional)}
 
 \item{included_var}{Variable to be included from the data frame}
 
-\item{continuous_vars}{Variables to be presented as continuous (mean and SD)}
+\item{non_normal_vars}{Variables to be presented as continuous but reported as median and IQR}
 
 \item{table_caption}{Caption for the table in string}
 
@@ -37,6 +37,7 @@ descriptive_tbl(
   data = mjms_data,
   group_var = "Treatment_Group",
   included_var = c("Age", "BMI", "Sex", "Smoker"),
+  non_normal_vars = c("Age"),
   table_caption = "Baseline Patient Characteristics",
   abbreviation = "BMI = Body Mass Index, SBP = Systolic Blood Pressure"
 )

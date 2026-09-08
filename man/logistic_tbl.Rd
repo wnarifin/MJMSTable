@@ -7,7 +7,7 @@
 logistic_tbl(
   data,
   outcome_var,
-  predictors,
+  predictor_vars,
   ref_levels = NULL,
   var_labels = NULL,
   cat_vars = NULL,
@@ -20,7 +20,9 @@ logistic_tbl(
 
 \item{outcome_var}{Binary output variable as a string}
 
-\item{predictors}{Predictor variables as a character vector}
+\item{predictor_vars}{Predictor variables as a character vector. Interaction
+terms can be included using standard R formula syntax, e.g. "Age * Sex"
+or "Age:Sex"}
 
 \item{ref_levels}{List name of reference levels (optional)}
 
@@ -42,7 +44,7 @@ A logistic regression output table
 logistic_tbl(
 data = mjms_data,
 outcome_var = "Heart_Disease",
-predictors = c("Age", "Sex", "Smoker"),
+predictor_vars = c("Age * Sex", "Smoker"), # "Age * Sex" adds an interaction term
 ref_levels = list(Smoker = "No", Sex = "Female"),
 cat_vars = c("Sex", "Smoker"),
 table_caption = "Risk Factors for Heart Disease"
