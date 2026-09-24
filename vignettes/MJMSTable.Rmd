@@ -190,7 +190,8 @@ diag_results <- diagnostic_tbl(
   show_plot = TRUE,
   plot_marker = "Cholesterol",
   table_caption = "Diagnostic Accuracy of Cardiovascular Markers",
-  abbreviation = "AUC = Area Under Curve; SBP = Systolic Blood Pressure"
+  abbreviation = "AUC = Area Under Curve; SBP = Systolic Blood Pressure",
+  seednum = 123 # reproducible bootstrap CIs for sensitivity and specificity
 )
 
 # View outputs

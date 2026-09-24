@@ -8,7 +8,7 @@ mcnemar_tbl(
   data,
   pre_var,
   post_var,
-  table_caption = "**Association between pre and post**",
+  table_caption = "Association between pre and post",
   header_pre = "Pre",
   header_post = "Post"
 )

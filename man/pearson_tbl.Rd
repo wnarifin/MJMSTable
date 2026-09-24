@@ -4,7 +4,12 @@
 \alias{pearson_tbl}
 \title{Pearson's correlation}
 \usage{
-pearson_tbl(data, included_var = NULL, abbreviation = NULL, table_caption = "")
+pearson_tbl(
+  data,
+  included_var = NULL,
+  abbreviation = NULL,
+  table_caption = "Correlation between variables"
+)
 }
 \arguments{
 \item{data}{Data frame}

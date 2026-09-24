@@ -11,7 +11,8 @@ diagnostic_tbl(
   show_plot = FALSE,
   plot_marker = NULL,
   table_caption = "Diagnostic performance",
-  abbreviation = NULL
+  abbreviation = NULL,
+  seednum = NULL
 )
 }
 \arguments{
@@ -28,6 +29,10 @@ diagnostic_tbl(
 \item{table_caption}{Caption for the table in string}
 
 \item{abbreviation}{Full name of abbreviated variables}
+
+\item{seednum}{Random seed for the bootstrap confidence intervals of
+sensitivity and specificity, so results are reproducible. NULL (default)
+does not set a seed.}
 }
 \value{
 A diagnostic table with/without ROC plot
@@ -48,7 +53,8 @@ diagnostic_tbl(
  show_plot = TRUE,
  plot_marker = "Cholesterol", # show plot for Cholesterol
  table_caption = "Diagnostic Accuracy of Cardiovascular Markers.",
- abbreviation = c("AUC = Area Under Curve", "SBP = Systolic Blood Pressure")
+ abbreviation = c("AUC = Area Under Curve", "SBP = Systolic Blood Pressure"),
+ seednum = 123
 )
 
 }

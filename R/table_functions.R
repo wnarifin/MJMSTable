@@ -69,26 +69,32 @@ descriptive_tbl <- function(data, group_var = NULL, included_var, non_normal_var
           digits = digits_list
         )
 
-      # 4. Conditionally add overall and format headers
+      # 4. Conditionally add overall and format headers (MJMS Table 1):
+      # "Group (n = x)" with "n (%)" under every column, including Total.
+      # The total n is given in the caption only. "n (%)" is dropped when
+      # there are no categorical variables.
+      has_categorical <- any(tbl_desc$table_body$var_type %in% c("categorical", "dichotomous"))
+      np_line <- if (has_categorical) "  \n_n_ (%)" else ""
+
       if (!is.null(group_var)) {
         tbl_desc <- tbl_desc |>
           gtsummary::add_overall(last = TRUE) |>
           gtsummary::modify_header(
             label = "**Variables**",
-            stat_0 = "**Total**\n_n_ (%)",
-            gtsummary::all_stat_cols(stat_0 = FALSE) ~ "**{level}** \n(\n_n_ = {n})"
+            stat_0 = paste0("**Total**", np_line),
+            gtsummary::all_stat_cols(stat_0 = FALSE) ~ paste0("**{level}** (_n_ = {n})", np_line)
           )
       } else {
         tbl_desc <- tbl_desc |>
           gtsummary::modify_header(
             label = "**Variables**",
-            stat_0 = "**Total**\n_n_ (%)"
+            stat_0 = paste0("**Total**", np_line)
           )
       }
 
       # 5. Process caption and clear old footnotes
       final_desc <- tbl_desc |>
-        gtsummary::modify_caption(paste0(" **Table :** ", table_caption, " (_n_ = {N})")) |>
+        gtsummary::modify_caption(mjms_caption(table_caption, n = "{N}")) |>
         gtsummary::remove_footnote_header()
 
       # 6. Apply Footnotes
@@ -124,12 +130,8 @@ descriptive_tbl <- function(data, group_var = NULL, included_var, non_normal_var
       # 8. GT conversions and source notes
       final_desc <- final_desc |>
         gtsummary::as_gt() |>
-        gt::opt_footnote_marks(marks = "letters")
-
-      if(!is.null(abbreviation)){
-        final_desc <- final_desc |>
-          gt::tab_source_note(source_note = paste0("Abbreviation: ", abbreviation))
-      }
+        gt::opt_footnote_marks(marks = "letters") |>
+        add_abbreviation_note(abbreviation)
 
       return(final_desc)
     }
@@ -170,15 +172,27 @@ ttest_tbl <- function(data, outcome_var, group_var, equal_var = TRUE,
     stop("Outcome or grouping variable missing from data.", call. = FALSE)
   }
 
+  grp <- droplevels(as.factor(data[[group_var]]))
+  lvls <- levels(grp)
+  if (length(lvls) != 2) {
+    stop("The grouping variable must have exactly two levels.", call. = FALSE)
+  }
+  y <- data[[outcome_var]]
+
+  # The second factor level is shown first, so the mean difference and t are
+  # (first-shown column) - (second-shown column), i.e. level 2 - level 1.
   ttest_out <- stats::t.test(
-    stats::as.formula(paste(bt(outcome_var), "~", bt(group_var))),
-    data = data,
-    var.equal= equal_var
+    y[grp == lvls[2]], y[grp == lvls[1]],
+    var.equal = equal_var
   )
 
   tstat <- unname(ttest_out$statistic)
   tdf <- unname(ttest_out$parameter)
-  tstat_format <- if (equal_var) "%.3f (%.0f)" else "%.3f (%.2f)"
+  tstat_format <- if (equal_var) "%.2f (%.0f)" else "%.2f (%.2f)"
+  mean_diff <- unname(ttest_out$estimate[1] - ttest_out$estimate[2])
+  diff_text <- sprintf("%.2f (%.2f, %.2f)", mean_diff,
+                       ttest_out$conf.int[1], ttest_out$conf.int[2])
+  p_text <- mjms_pvalue(ttest_out$p.value)
 
   gtsummary::with_gtsummary_theme(
     gtsummary::theme_gtsummary_journal("jama"),
@@ -191,56 +205,45 @@ ttest_tbl <- function(data, outcome_var, group_var, equal_var = TRUE,
           statistic = list(gtsummary::all_continuous() ~ "{mean} ({sd})"),
           digits = list(gtsummary::all_continuous() ~ c(2,2))
         )|>
-        gtsummary::add_difference(
-          estimate_fun = list(gtsummary::all_continuous() ~ gtsummary::label_style_number(digits = c(2,2))),
-          test = gtsummary::all_continuous() ~ "t.test",
-          test.args = gtsummary::all_continuous() ~ list(var.equal = equal_var),
-          pvalue_fun = ~ gtsummary::style_pvalue(.x, digits = 3)
-        )|>
         gtsummary::modify_spanning_header(c("stat_1","stat_2") ~ "**Mean (SD)**") |>
         gtsummary::modify_post_fmt_fun(
           fmt_fun = ~ strip_stat_suffix(.),
           columns = "label"
         )|>
-        gtsummary::modify_post_fmt_fun(
-          fmt_fun = ~ gsub (" to ", ", ", .),
-          columns = "estimate"
+        gtsummary::modify_table_body(
+          ~ .x |>
+            dplyr::mutate(
+              is_label = .data$row_type == "label",
+              estimate = ifelse(.data$is_label, diff_text, NA_character_),
+              tstatistic = ifelse(.data$is_label, sprintf(tstat_format, tstat, tdf), NA_character_),
+              p.value = ifelse(.data$is_label, p_text, NA_character_)
+            )|>
+            dplyr::select(-"is_label") |>
+            dplyr::relocate("stat_2", .before = "stat_1")
         )|>
         gtsummary::modify_header(
           label = "**Variable**",
           stat_1 = "**{level}** \n\n_n_ = {n}",
           stat_2 = "**{level}** \n\n_n_ = {n}",
           estimate = "**Mean   \ndifference   \n(****95%  CI****)**",
+          tstatistic = "**_t_-statistic  \n(df)**",
           p.value = "_P_**-value**"
         )|>
-        gtsummary::modify_table_body(
-          ~ .x |>
-            dplyr::mutate(
-              tstatistic = sprintf(tstat_format, tstat, tdf)
-            )|>
-            dplyr::relocate("tstatistic", .before = "p.value") |>
-            dplyr::relocate("stat_2", .before = "stat_1")
-        )|>
-        gtsummary::modify_header(tstatistic = "**_t_-statistic  \n(df)**")|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption))
+        gtsummary::modify_caption(mjms_caption(table_caption))
 
       footnote_text <- ifelse(equal_var, "Independent _t_-test.", "Welch's _t_-test.")
 
       final_ttest <- ttest_tbl |>
         gtsummary::remove_footnote_header()|>
-        gtsummary::remove_abbreviation("CI = Confidence Interval")|>
         gtsummary::modify_footnote_header(
           footnote = footnote_text,
           columns = "p.value"
         )
 
-      if (!is.null(abbreviation)) {
-        final_ttest <- final_ttest |> gtsummary::modify_abbreviation(abbreviation)
-      }
-
       final_ttest <- final_ttest|>
         gtsummary::as_gt()|>
-        gt::opt_footnote_marks(marks = "letters")
+        gt::opt_footnote_marks(marks = "letters") |>
+        add_abbreviation_note(abbreviation)
 
       return(final_ttest)
     }
@@ -291,15 +294,20 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = N
   vec1 <- data[[pre_var]]
   vec2 <- data[[post_var]]
 
-  ttest_result <- stats::t.test(vec1, vec2, paired = TRUE)
+  # Pre is shown first; the mean difference and t are post - pre
+  ttest_result <- stats::t.test(vec2, vec1, paired = TRUE)
   pstat <- unname(ttest_result$statistic)
   pDf <- unname(ttest_result$parameter)
+  diff_text <- sprintf("%.2f (%.2f, %.2f)", unname(ttest_result$estimate),
+                       ttest_result$conf.int[1], ttest_result$conf.int[2])
+  p_text <- mjms_pvalue(ttest_result$p.value)
 
   temp_long <- data|>
     dplyr::select(id = dplyr::all_of(id_var), pre = dplyr::all_of(pre_var), post = dplyr::all_of(post_var))|>
     tidyr::pivot_longer(cols = c("pre", "post"),
                         names_to = "Group_Temp",
-                        values_to = "Value_Temp")
+                        values_to = "Value_Temp")|>
+    dplyr::mutate(Group_Temp = factor(.data$Group_Temp, levels = c("pre", "post")))
 
   gtsummary::with_gtsummary_theme(
     gtsummary::theme_gtsummary_journal("jama"),
@@ -312,19 +320,6 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = N
           statistic = "Value_Temp" ~ "{mean} ({sd})",
           digits = "Value_Temp" ~ c(2,2)
         )|>
-        gtsummary::add_difference(
-          group = "id",
-          test = "Value_Temp" ~ "paired.t.test"
-        )|>
-        gtsummary::modify_column_merge(
-          pattern = "{estimate} ({conf.low}, {conf.high})",
-          rows = !is.na(.data$estimate)
-        )|>
-        gtsummary::modify_column_hide(columns = c("conf.low", "conf.high"))|>
-        gtsummary::modify_post_fmt_fun(
-          fmt_fun = ~ gsub(" to ", ", ", .),
-          columns = "estimate"
-        )|>
         gtsummary::modify_post_fmt_fun(
           fmt_fun = ~ strip_stat_suffix(.),
           columns = "label"
@@ -334,31 +329,31 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = N
         )|>
         gtsummary::modify_header(
           label = "**Variable**",
+          # Group_Temp levels are c("pre", "post"): stat_1 = pre, stat_2 = post
           stat_1 = paste0("**", col1_name, "**"),
-          stat_2 = paste0("**", col2_name, "**"),
-          estimate = "**Mean  \ndifference  \n(****95% CI****)**",
-          p.value = "_P_**-value**"
+          stat_2 = paste0("**", col2_name, "**")
         )|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption))
+        gtsummary::modify_caption(mjms_caption(table_caption))
 
       paired_tbl <- paired_tbl |>
         gtsummary::modify_table_body(
           ~ .x |>
             dplyr::mutate(
-              pairedstat = sprintf("%.3f (%.0f)", pstat, pDf)
+              is_label = .data$row_type == "label",
+              estimate = ifelse(.data$is_label, diff_text, NA_character_),
+              pairedstat = ifelse(.data$is_label, sprintf("%.2f (%.0f)", pstat, pDf), NA_character_),
+              p.value = ifelse(.data$is_label, p_text, NA_character_)
             )|>
-            dplyr::relocate("pairedstat", .before = "p.value")|>
-            dplyr::relocate("stat_2", .before = "stat_1")
+            dplyr::select(-"is_label")
         )|>
-        gtsummary::modify_header(pairedstat = "**_t_-statistic  \n(df)**")
+        gtsummary::modify_header(
+          estimate = "**Mean  \ndifference  \n(****95% CI****)**",
+          pairedstat = "**_t_-statistic  \n(df)**",
+          p.value = "_P_**-value**"
+        )
 
       paired_final <- paired_tbl |>
-        gtsummary::remove_footnote_header()|>
-        gtsummary::remove_abbreviation("CI = Confidence Interval")
-
-      if(!is.null(abbreviation)){
-        paired_final <- paired_final |> gtsummary::modify_abbreviation(abbreviation)
-      }
+        gtsummary::remove_footnote_header()
 
       paired_final <- paired_final |>
         gtsummary::modify_footnote_header(
@@ -366,7 +361,8 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = N
           columns = "p.value"
         )|>
         gtsummary::as_gt()|>
-        gt::opt_footnote_marks(marks = "letters")
+        gt::opt_footnote_marks(marks = "letters") |>
+        add_abbreviation_note(abbreviation)
 
       return(paired_final)
     }
@@ -383,11 +379,12 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = N
 #' @param group_var Grouping variable with more than 2 groups
 #' @param var_equal TRUE(ANOVA) FALSE(Welch ANOVA)
 #' @param outcome_label New label for outcome variable
+#' @param group_label Header for the column listing the groups
 #' @param table_caption Caption for the table in string
 #' @param posthoc_method P-value adjustment for post-hoc test
 #' @param abbreviation Full name of abbreviated variables
 #' @return A One-Way ANOVA output table
-#' @importFrom stats aov as.formula pairwise.t.test sd
+#' @importFrom stats oneway.test as.formula pairwise.t.test sd
 #' @importFrom rlang := .data
 #' @examples
 #' anova_tbl(
@@ -400,11 +397,16 @@ paired_ttest_tbl <- function(data, id_var, pre_var, post_var, variable_label = N
 #' @export
 anova_tbl <- function(
     data, outcome_var, group_var, var_equal = TRUE, outcome_label = NULL,
+    group_label = "Groups",
     table_caption = "Comparison of means between groups",
     posthoc_method = "bonferroni", abbreviation = NULL){
 
   out_name <- outcome_var
   grp_name <- group_var
+
+  if (is.null(outcome_label)) {
+    outcome_label <- out_name
+  }
 
   data <- data|>
     dplyr::mutate(!!grp_name := as.factor(.data[[grp_name]]))
@@ -418,29 +420,58 @@ anova_tbl <- function(
           include = dplyr::all_of(grp_name),
           statistic = ~ "{mean} ({sd})",
           digits = ~ c(2,2)
-        )|>
-        gtsummary::add_p(
-          test = list(gtsummary::all_continuous() ~ "oneway.test"),
-          test.args = gtsummary::all_continuous() ~ list(var.equal = var_equal)
-        )|>
-        gtsummary::modify_column_hide("statistic")
+        )
 
       tbl_right <- data |>
         gtsummary::tbl_summary(include = dplyr::all_of(grp_name), statistic = ~ "{n}")|>
         gtsummary::modify_header(stat_0 = "**_n_**",label = "")
 
-      aov_fit <- stats::aov(stats::as.formula(paste(bt(out_name), "~", bt(grp_name))), data = data)
-      aov_tidy <- broom::tidy(aov_fit)
+      # F, df and P all come from the same test, so var_equal is honoured
+      # (var_equal = FALSE gives Welch's ANOVA with non-integer df2)
+      ow_fit <- stats::oneway.test(
+        stats::as.formula(paste(bt(out_name), "~", bt(grp_name))),
+        data = data, var.equal = var_equal
+      )
+      f_val <- unname(ow_fit$statistic)
+      df1 <- unname(ow_fit$parameter[1])
+      df2 <- unname(ow_fit$parameter[2])
+      p_val <- ow_fit$p.value
+      df2_fmt <- if (var_equal) "%.0f" else "%.2f"
 
       ph_test <- stats::pairwise.t.test(data[[out_name]], data[[grp_name]],
-                                        p.adjust.method = posthoc_method)
+                                        p.adjust.method = posthoc_method,
+                                        pool.sd = var_equal)
       ph_tidy <- broom::tidy(ph_test)|>
         dplyr::filter(.data$p.value < 0.05)
 
-      ph_text <- if (nrow(ph_tidy) > 0){
-        paste("Sig. differences (p < 0.05):", paste(ph_tidy$group1, "vs",
-                                                    ph_tidy$group2, collapse = "; "))
-      } else {"No sig. differences." }
+      method_text <- switch(
+        posthoc_method,
+        bonferroni = "Bonferroni correction",
+        holm = "Holm correction",
+        hochberg = "Hochberg correction",
+        hommel = "Hommel correction",
+        BH = , fdr = "Benjamini-Hochberg correction",
+        BY = "Benjamini-Yekutieli correction",
+        none = "no correction",
+        paste(posthoc_method, "correction")
+      )
+
+      ph_text <- if (nrow(ph_tidy) > 0) {
+        grp_levels <- levels(data[[grp_name]])
+        pairs <- vapply(seq_len(nrow(ph_tidy)), function(i) {
+          g <- c(ph_tidy$group1[i], ph_tidy$group2[i])
+          g <- g[order(match(g, grp_levels))]
+          p_i <- mjms_pvalue(ph_tidy$p.value[i])
+          p_i <- if (startsWith(p_i, "<")) paste("_P_", p_i) else paste("_P_ =", p_i)
+          paste0(g[1], " and ", g[2], " (", p_i, ")")
+        }, character(1))
+        paste0("Post-hoc analysis with ", method_text,
+               " shows significant difference between ",
+               paste(pairs, collapse = ", and between "), ".")
+      } else {
+        paste0("Post-hoc analysis with ", method_text,
+               " shows no significant difference between groups.")
+      }
 
       final_merge <- gtsummary::tbl_merge(
         tbls = list(tbl_left, tbl_right),
@@ -448,16 +479,20 @@ anova_tbl <- function(
       )|>
         gtsummary::modify_table_body(
           ~ .x|>
+            # list the groups directly under the group header (no variable
+            # label row); F and P go on the first group row
+            dplyr::filter(.data$row_type != "label") |>
             dplyr::mutate(
-              Fstatistic = sprintf("%.2f  \n(%d, %d)", aov_tidy$statistic[1],
-                                   aov_tidy$df[1], aov_tidy$df[2]),
-              Fstatistic = ifelse(dplyr::row_number() == 1, .data$Fstatistic, "")
+              row_type = "label",
+              Fstatistic = sprintf(paste0("%.2f  \n(%.0f, ", df2_fmt, ")"), f_val, df1, df2),
+              Fstatistic = ifelse(dplyr::row_number() == 1, .data$Fstatistic, ""),
+              p.value_1 = ifelse(dplyr::row_number() == 1, mjms_pvalue(p_val), "")
             )|>
             dplyr::relocate("stat_0_2", .before = "stat_0_1") |>
             dplyr::relocate("Fstatistic", .before = "p.value_1")
         )|>
         gtsummary::modify_header(
-          label = "**Groups**",
+          label = paste0("**", group_label, "**"),
           stat_0_1 = paste0("**", outcome_label, "**    \n**Mean (SD)**"),
           Fstatistic = "_F_**-statistic** \n(df1,df2)",
           p.value_1 = "_P_**-value**"
@@ -467,21 +502,19 @@ anova_tbl <- function(
           fmt_fun = ~ strip_stat_suffix(.),
           columns = "label"
         )|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption))|>
+        gtsummary::modify_caption(mjms_caption(table_caption))|>
         gtsummary::modify_footnote_header(
-          footnote = "One-way ANOVA.",
+          footnote = if (var_equal) "One-way ANOVA." else "Welch's ANOVA.",
           columns = c("Fstatistic", "p.value_1")
         )
 
-      if (!is.null(abbreviation)) {
-        final_merge <- final_merge |> gtsummary::modify_abbreviation(abbreviation)
-      }
       final_merge <- final_merge|>
         gtsummary::as_gt()|>
-        gt::tab_footnote(footnote = ph_text,
+        gt::tab_footnote(footnote = gt::md(ph_text),
                          locations = gt::cells_body(columns = "p.value_1", rows = 1)
         )|>
-        gt::opt_footnote_marks(marks = "letters")
+        gt::opt_footnote_marks(marks = "letters") |>
+        add_abbreviation_note(abbreviation)
 
       return(final_merge)
     }
@@ -526,7 +559,7 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
 
   t_tbl <- broom::tidy(model) |>
     dplyr::select("term", "statistic") |>
-    dplyr::mutate(tstat = sprintf("%.3f", .data$statistic)) |>
+    dplyr::mutate(tstat = sprintf("%.2f", .data$statistic)) |>
     dplyr::select("term", "tstat")
 
   r_squared <- summary(model)$r.squared
@@ -537,7 +570,7 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
       linear_tbl <- model |>
         gtsummary::tbl_regression(
           label = var_labels,
-          pvalue_fun = ~gtsummary::style_pvalue(.x, digits = 3)
+          pvalue_fun = mjms_pvalue
         )|>
         gtsummary::modify_header(
           label = "**Factors**",
@@ -556,25 +589,22 @@ lm_tbl <- function(data, outcome_var, predictor_vars, var_labels = NULL,
         )|>
         gtsummary::modify_column_unhide("tstat")|>
         gtsummary::modify_header(tstat = "**_t_-statistic**")|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption, " (_n_ = {N})."))
+        gtsummary::modify_caption(mjms_caption(table_caption, n = "{N}"))
 
       linear_final <- linear_tbl |>
         gtsummary::remove_abbreviation("CI = Confidence Interval")|>
         gtsummary::modify_footnote_header(
-          footnote = "Adjusted regression coefficients,",
+          footnote = "Adjusted regression coefficients.",
           columns = "estimate"
         )|>
         gtsummary::modify_footnote_header(
-          footnote = paste0("Multiple linear regression (R\u00b2 =",
+          footnote = paste0("Multiple linear regression (*R*\u00b2 = ",
                             sprintf("%.3f", r_squared), ")."),
           columns = "p.value"
         )|>
         gtsummary::as_gt()|>
-        gt::opt_footnote_marks(marks = "letters")
-
-      if(!is.null(abbreviation)){
-        linear_final <- linear_final |> gt::tab_source_note(source_note = abbreviation)
-      }
+        gt::opt_footnote_marks(marks = "letters") |>
+        add_abbreviation_note(abbreviation)
 
       return(linear_final)
     }
@@ -635,7 +665,7 @@ logistic_tbl <- function(data, outcome_var, predictor_vars, ref_levels = NULL,
     dplyr::select("term", "estimate", "statistic") |>
     dplyr::mutate(
       b = sprintf("%.2f", .data$estimate),
-      zstat = sprintf("%.3f", .data$statistic)
+      zstat = sprintf("%.2f", .data$statistic)
     )|>
     dplyr::select("term", "b", "zstat")
 
@@ -648,7 +678,7 @@ logistic_tbl <- function(data, outcome_var, predictor_vars, ref_levels = NULL,
           tidy_fun = broom.helpers::tidy_parameters,
           type = if(!is.null(cat_vars)) list(dplyr::all_of(cat_vars) ~ "categorical") else NULL,
           label = var_labels,
-          pvalue_fun = ~gtsummary::style_pvalue(.x, digits = 3)
+          pvalue_fun = mjms_pvalue
         )|>
         gtsummary::modify_header(
           label = "**Factors**",
@@ -671,27 +701,25 @@ logistic_tbl <- function(data, outcome_var, predictor_vars, ref_levels = NULL,
         )|>
         gtsummary::modify_column_unhide(c("b", "zstat"))|>
         gtsummary::modify_header(b = "**_b_**", zstat = "**Wald statistic**")|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption," (_n_ = {N})."))
+        gtsummary::modify_caption(mjms_caption(table_caption, n = "{N}"))
 
       final_logit <- logit_tbl|>
         gtsummary::modify_footnote_header(
-          footnote = "Likelihood ratio test.",
+          footnote = "Wald test.",
           columns = "p.value"
         )|>
         gtsummary::modify_footnote_body(
           footnote = "Reference category.",
-          rows = .data$b == "-"
+          columns = "label",
+          rows = .data$reference_row %in% TRUE
         )|>
         gtsummary::remove_abbreviation("CI = Confidence Interval")|>
         gtsummary::remove_abbreviation("OR = Odds Ratio")
 
       final_logit <- final_logit|>
         gtsummary::as_gt()|>
-        gt::opt_footnote_marks(marks = "letters")
-
-      if(!is.null(abbreviation)){
-        final_logit <- final_logit |> gt::tab_source_note(source_note = abbreviation)
-      }
+        gt::opt_footnote_marks(marks = "letters") |>
+        add_abbreviation_note(abbreviation)
 
       return(final_logit)
     }
@@ -724,7 +752,7 @@ logistic_tbl <- function(data, outcome_var, predictor_vars, ref_levels = NULL,
 #'
 #' @export
 mcnemar_tbl <- function(
-    data, pre_var, post_var, table_caption = "**Association between pre and post**",
+    data, pre_var, post_var, table_caption = "Association between pre and post",
     header_pre = "Pre", header_post = "Post"){
 
   pre_nm <- pre_var
@@ -769,8 +797,7 @@ mcnemar_tbl <- function(
               n_total = ifelse(.data$row_type == "level", as.character(.data$n_row_total), NA),
               chisq_stats = ifelse(.data$row_type == "label",
                                    sprintf("%.2f (%d)", chi_val, df_val), NA),
-              p_final = ifelse(.data$row_type == "label",
-                               ifelse(p_val < 0.001, "<0.001", sprintf("%.3f", p_val)), NA)
+              p_final = ifelse(.data$row_type == "label", mjms_pvalue(p_val), NA)
             )|>
             dplyr::relocate("n_total", "chisq_stats", "p_final", .after = dplyr::last_col())
         )|>
@@ -783,7 +810,7 @@ mcnemar_tbl <- function(
           p_final = "_P_**-value**"
         )|>
         gtsummary::modify_spanning_header(gtsummary::all_stat_cols() ~ paste0("**",header_post,"**"))|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption))|>
+        gtsummary::modify_caption(mjms_caption(table_caption))|>
         gtsummary::remove_footnote_header()|>
         gtsummary::modify_footnote_header(
           footnote = "McNemar's Chi-squared test with continuity correction.",
@@ -823,7 +850,7 @@ mcnemar_tbl <- function(
 #'
 #' @export
 chisq_tbl <- function(
-    data, exposure_var, outcome_var, table_caption = "**Association between exposure and outcome**"){
+    data, exposure_var, outcome_var, table_caption = "Association between exposure and outcome"){
 
   exp_name <- exposure_var
   out_name <- outcome_var
@@ -845,6 +872,7 @@ chisq_tbl <- function(
         gtsummary::tbl_summary(
           by = dplyr::all_of(out_name),
           include = dplyr::all_of(exp_name),
+          percent = "row",
           statistic = gtsummary::all_categorical() ~ "{n} ({p})",
           digits = gtsummary::all_categorical() ~ c(0,1)
         )
@@ -857,8 +885,7 @@ chisq_tbl <- function(
               n_total = ifelse(.data$row_type == "label", NA, .data$n_row),
               chi_stat = ifelse(.data$row_type == "label",
                                 sprintf("%.2f (%d)", chi_val, df_val), NA),
-              p_val_custom = ifelse(.data$row_type == "label",
-                                    ifelse(p_val < 0.001, "< 0.001", sprintf("%.3f", p_val)), NA))|>
+              p_val_custom = ifelse(.data$row_type == "label", mjms_pvalue(p_val), NA))|>
             dplyr::relocate("n_total", "chi_stat", "p_val_custom", .after = dplyr::last_col()))|>
         gtsummary::modify_column_unhide(columns = c("n_total", "chi_stat", "p_val_custom"))|>
         gtsummary::modify_header(
@@ -869,7 +896,7 @@ chisq_tbl <- function(
           p_val_custom = "_P_**-value**"
         )|>
         gtsummary::modify_spanning_header(gtsummary::all_stat_cols() ~ paste0("**", out_name,"**"))|>
-        gtsummary::modify_caption(paste0("**Table :** ", table_caption))|>
+        gtsummary::modify_caption(mjms_caption(table_caption))|>
         gtsummary::remove_footnote_header()|>
         gtsummary::modify_footnote_header(
           footnote = "Chi-square test for independence.",
@@ -899,6 +926,9 @@ chisq_tbl <- function(
 #' @param plot_marker Specific test visualize in the ROC plot
 #' @param table_caption Caption for the table in string
 #' @param abbreviation Full name of abbreviated variables
+#' @param seednum Random seed for the bootstrap confidence intervals of
+#' sensitivity and specificity, so results are reproducible. NULL (default)
+#' does not set a seed.
 #' @return A diagnostic table with/without ROC plot
 #' @importFrom pROC roc coords ci.auc ci.coords
 #' @importFrom ggplot2 ggplot aes geom_abline geom_step scale_x_continuous scale_y_continuous labs theme_minimal
@@ -916,13 +946,19 @@ chisq_tbl <- function(
 #'  show_plot = TRUE,
 #'  plot_marker = "Cholesterol", # show plot for Cholesterol
 #'  table_caption = "Diagnostic Accuracy of Cardiovascular Markers.",
-#'  abbreviation = c("AUC = Area Under Curve", "SBP = Systolic Blood Pressure")
+#'  abbreviation = c("AUC = Area Under Curve", "SBP = Systolic Blood Pressure"),
+#'  seednum = 123
 #' )
 #'
 #' @export
 diagnostic_tbl <- function(
     data, status_var, marker_map, show_plot = FALSE, plot_marker = NULL,
-    table_caption = "Diagnostic performance", abbreviation = NULL){
+    table_caption = "Diagnostic performance", abbreviation = NULL,
+    seednum = NULL){
+
+  if (!is.null(seednum) && !(is.numeric(seednum) && length(seednum) == 1)) {
+    stop("`seednum` must be a single number or NULL.", call. = FALSE)
+  }
 
   marker_cols <- names(marker_map)
   marker_labels <- stats::setNames(lapply(marker_map, function(x) x$label), marker_cols)
@@ -942,21 +978,24 @@ diagnostic_tbl <- function(
     val <- "NA"
     if (type == "sens"){
       res <- pROC::coords(roc_val, x = cutoff, input = "threshold", ret = "sensitivity", transpose = FALSE)
+      # seed set right before each bootstrap so every CI is reproducible
+      if (!is.null(seednum)) set.seed(seednum)
       ci_val <- suppressMessages(pROC::ci.coords(roc_val, x = cutoff, input = "threshold", ret = "sensitivity"))
-      val <- paste0(round(res$sensitivity * 100, 1), " (",
-                    round(ci_val[[1]][1] * 100, 1), ", ", round(ci_val[[1]][3] * 100, 1), ")")
+      val <- sprintf("%.1f (%.1f, %.1f)", res$sensitivity * 100,
+                     ci_val[[1]][1] * 100, ci_val[[1]][3] * 100)
     }
 
     if (type == "spec"){
       res <- pROC::coords(roc_val, x = cutoff, input = "threshold", ret = "specificity", transpose = FALSE)
+      if (!is.null(seednum)) set.seed(seednum)
       ci_val <- suppressMessages(pROC::ci.coords(roc_val, x = cutoff, input = "threshold", ret = "specificity"))
-      val <- paste0(round(res$specificity * 100, 1), " (",
-                    round(ci_val[[1]][1] * 100, 1), ", ", round(ci_val[[1]][3] * 100, 1), ")")
+      val <- sprintf("%.1f (%.1f, %.1f)", res$specificity * 100,
+                     ci_val[[1]][1] * 100, ci_val[[1]][3] * 100)
     }
 
     if (type == "auc"){
       ci_val <- as.numeric(pROC::ci.auc(roc_val))
-      val <- paste0(round(ci_val[2], 2), " (", round(ci_val[1], 2), ", ", round(ci_val[3], 2), ")")
+      val <- sprintf("%.2f (%.2f, %.2f)", ci_val[2], ci_val[1], ci_val[3])
     }
     return(tibble::tibble(complex = val))
   }
@@ -991,7 +1030,8 @@ diagnostic_tbl <- function(
       t_pval <- data |>
         dplyr::select(dplyr::all_of(c(status_var, marker_cols)))|>
         gtsummary::tbl_summary(by = dplyr::all_of(status_var), label = marker_labels)|>
-        gtsummary::add_p(test= list(gtsummary::all_continuous() ~ "wilcox.test"))|>
+        gtsummary::add_p(test= list(gtsummary::all_continuous() ~ "wilcox.test"),
+                         pvalue_fun = mjms_pvalue)|>
         gtsummary::modify_column_hide(dplyr::all_of(c("stat_1", "stat_2")))|>
         gtsummary::modify_header(p.value = "_P_**-value**")
 
@@ -999,8 +1039,9 @@ diagnostic_tbl <- function(
         tbls = list(t_sens, t_spec, t_auc, t_pval),
         tab_spanner = FALSE
       )|>
-        gtsummary::modify_header(label = "**Variable (cutoff)**")|>
-        gtsummary::modify_abbreviation(paste(abbreviation, collapse = "; "))|>
+        gtsummary::modify_header(label = "**Variable (cutoff)**")
+
+      final_diag <- final_diag |>
         gtsummary::remove_footnote_header()|>
         gtsummary::modify_footnote_header(footnote = "Null hypothesis: true area = 0.5.",
                                           columns = "p.value_4")|>
@@ -1010,7 +1051,8 @@ diagnostic_tbl <- function(
         )|>
         gtsummary::as_gt()|>
         gt::opt_footnote_marks(marks = "letters")|>
-        gt::tab_caption(caption = paste0(table_caption, " (n = ", nrow(data), ")"))
+        add_abbreviation_note(abbreviation)|>
+        gt::tab_caption(caption = gt::md(mjms_caption(table_caption, n = nrow(data))))
 
       plot_diag <- NULL
       if (show_plot){
@@ -1058,7 +1100,8 @@ diagnostic_tbl <- function(
 #'
 #' @export
 pearson_tbl <- function(
-    data, included_var = NULL, abbreviation = NULL, table_caption =""){
+    data, included_var = NULL, abbreviation = NULL,
+    table_caption = "Correlation between variables"){
 
   if (is.null(included_var)){
     corr_subset <- data |> dplyr::select(dplyr::where(is.numeric))
@@ -1086,12 +1129,12 @@ pearson_tbl <- function(
   for (i in seq_len(n_var)) {
     for (j in seq_len(n_var)) {
       if(i == j){
-        tabs[i, j] <- sprintf("%.3f", sd_vals[i])
+        tabs[i, j] <- sprintf("%.2f", sd_vals[i])
       } else if(i < j){
         p_val <- p_mat[i, j]
-        tabs[i, j] <- ifelse(p_val < 0.001, "< 0.001", sprintf("%.3f", p_val))
+        tabs[i, j] <- mjms_pvalue(p_val)
       } else {
-        tabs[i, j] <- sprintf("%.3f", r_mat[i, j])
+        tabs[i, j] <- sprintf("%.2f", r_mat[i, j])
       }
     }
   }
@@ -1099,7 +1142,7 @@ pearson_tbl <- function(
   gt_table <- as.data.frame(tabs)|>
     tibble::rownames_to_column(var = "Variables")|>
     gt::gt(rowname_col = "Variables")|>
-    gt::tab_header(title = gt::md(paste0("**", table_caption, "** (n = ", nrow(data), ")")))|>
+    gt::tab_caption(caption = gt::md(mjms_caption(table_caption, n = nrow(data))))|>
     gt::tab_stubhead(label = "Variables")|>
     gt::cols_align(align = "center", gt::everything())
 
@@ -1122,10 +1165,7 @@ pearson_tbl <- function(
     }
   }
 
-  if (!is.null(abbreviation)){
-    gt_table <- gt_table |>
-      gt::tab_source_note(source_note = gt::md(paste0("Abbreviation: ", abbreviation)))
-  }
+  gt_table <- add_abbreviation_note(gt_table, abbreviation)
 
   gt_table |>
     gt::opt_footnote_marks(marks = "letters")|>

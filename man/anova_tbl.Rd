@@ -10,6 +10,7 @@ anova_tbl(
   group_var,
   var_equal = TRUE,
   outcome_label = NULL,
+  group_label = "Groups",
   table_caption = "Comparison of means between groups",
   posthoc_method = "bonferroni",
   abbreviation = NULL
@@ -25,6 +26,8 @@ anova_tbl(
 \item{var_equal}{TRUE(ANOVA) FALSE(Welch ANOVA)}
 
 \item{outcome_label}{New label for outcome variable}
+
+\item{group_label}{Header for the column listing the groups}
 
 \item{table_caption}{Caption for the table in string}
 

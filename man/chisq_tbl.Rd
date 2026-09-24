@@ -8,7 +8,7 @@ chisq_tbl(
   data,
   exposure_var,
   outcome_var,
-  table_caption = "**Association between exposure and outcome**"
+  table_caption = "Association between exposure and outcome"
 )
 }
 \arguments{

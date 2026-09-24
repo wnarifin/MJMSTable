@@ -50,7 +50,3 @@ library(MJMSTable)
 vignette("MJMSTable")
 
 ```
-
-### Vignette
-
-You can also view the vignette / quick-start document here: <https://wnarifin.github.io/vignette/MJMSTable.html>
