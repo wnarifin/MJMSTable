@@ -1,14 +1,22 @@
 # descriptive table ----
 
-#' Descriptive statistic test
+#' Descriptive statistic
 #'
 #' @description A descriptive table describing demographic or simple variable
 #' @param data Data frame
 #' @param group_var Grouping variable (optional)
 #' @param included_var Variable to be included from the data frame
 #' @param non_normal_vars Variables to be presented as continuous but reported as median and IQR
+#' @param continuous_vars Additional variables to summarise as continuous, e.g. 0/1
+#'   variables to report as mean (SD). Numeric variables in `included_var` (except
+#'   0/1 variables) and `non_normal_vars` are always summarised as continuous
 #' @param table_caption Caption for the table in string
 #' @param abbreviation Full name of abbreviated variables
+#' @details Numeric variables are summarised as continuous regardless of the number
+#'   of unique values; store numeric-coded categories (e.g. stage 1-4) as factors.
+#'   0/1 variables are summarised as dichotomous, n (%), unless listed in
+#'   `continuous_vars`, in which case they are reported as mean (SD) with two
+#'   decimal places.
 #' @return A descriptive table
 #' @importFrom rlang .data .env
 #' @examples
@@ -22,6 +30,7 @@
 #' )
 #' @export
 descriptive_tbl <- function(data, group_var = NULL, included_var, non_normal_vars = NULL,
+                            continuous_vars = NULL,
                             table_caption = "Patient Demographics",
                             abbreviation = NULL){
 
@@ -60,10 +69,45 @@ descriptive_tbl <- function(data, group_var = NULL, included_var, non_normal_var
         cols_to_select <- c(group_var, cols_to_select)
       }
 
+      # 3b. Force continuous type. By default, gtsummary summarises numeric
+      # variables with < 10 unique values as categorical; an explicit type
+      # overrides this. Continuous variables = numeric variables (except 0/1)
+      # + continuous_vars (additive, e.g. 0/1 variables) + non_normal_vars.
+      is_cont <- vapply(
+        data[included_var],
+        function(x) is.numeric(x) && !all(stats::na.omit(x) %in% c(0, 1)),
+        logical(1)
+      )
+      continuous_vars <- unique(c(included_var[is_cont], continuous_vars, non_normal_vars))
+
+      not_numeric <- continuous_vars[!vapply(data[continuous_vars], is.numeric, logical(1))]
+      if (length(not_numeric) > 0) {
+        stop("These variables must be numeric to be summarised as continuous: ",
+             paste(not_numeric, collapse = ", "),
+             ". Convert them first, e.g. with as.numeric().", call. = FALSE)
+      }
+
+      type_list <- if (length(continuous_vars) > 0) {
+        list(dplyr::all_of(continuous_vars) ~ "continuous")
+      } else {
+        NULL
+      }
+
+      # 0/1 variables summarised as continuous: mean = p, so use two decimals
+      binary_cont <- continuous_vars[vapply(
+        data[continuous_vars],
+        function(x) all(stats::na.omit(x) %in% c(0, 1)),
+        logical(1)
+      )]
+      if (length(binary_cont) > 0) {
+        digits_list <- c(digits_list, list(dplyr::all_of(binary_cont) ~ c(2, 2)))
+      }
+
       tbl_desc <- data |>
         dplyr::select(dplyr::all_of(cols_to_select))|>
         gtsummary::tbl_summary(
           by = if (!is.null(group_var)) dplyr::all_of(group_var) else NULL,
+          type = type_list,
           missing_text = "Missing",
           statistic = stat_list,
           digits = digits_list

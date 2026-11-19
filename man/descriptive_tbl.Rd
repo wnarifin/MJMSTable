@@ -2,13 +2,14 @@
 % Please edit documentation in R/table_functions.R
 \name{descriptive_tbl}
 \alias{descriptive_tbl}
-\title{Descriptive statistic test}
+\title{Descriptive statistic}
 \usage{
 descriptive_tbl(
   data,
   group_var = NULL,
   included_var,
   non_normal_vars = NULL,
+  continuous_vars = NULL,
   table_caption = "Patient Demographics",
   abbreviation = NULL
 )
@@ -21,6 +22,10 @@ descriptive_tbl(
 \item{included_var}{Variable to be included from the data frame}
 
 \item{non_normal_vars}{Variables to be presented as continuous but reported as median and IQR}
+
+\item{continuous_vars}{Variables to force as continuous, regardless of the number of
+unique values. Default (`NULL`): all numeric variables in `included_var`, except
+0/1 variables, plus `non_normal_vars`}
 
 \item{table_caption}{Caption for the table in string}
 
